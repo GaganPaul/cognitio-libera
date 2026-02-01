@@ -61,33 +61,70 @@ st.title("🚀 Cognitio Libera")
 # No longer checking if api_key is missing here because we stop earlier if it is.
 llm_manager = LLMManager(api_key)
 
-# Question Generation Section
-if st.session_state.current_question is None:
-    if st.button("Start New Question", type="primary"):
-        # Get history of topics/questions to avoid repeats
-        topic_history = [item["question"] for item in st.session_state.history]
-        
-        with st.spinner(f"Generating {difficulty} {practice_mode}..."):
-            try:
-                if "Coding" in practice_mode:
-                    q = llm_manager.generate_coding_question(language, difficulty, topic_history)
-                else:
-                    q = llm_manager.generate_mcq(language, difficulty, topic_history)
-                
-                st.session_state.current_question = q
-                st.session_state.question_start_time = time.time()
-                st.rerun()
-            except Exception as e:
-                st.error(f"Failed to generate question: {e}")
+# Helper for continuous timer
+def timer_component(start_time):
+    # This HTML/JS will update the timer client-side without rerunning the script
+    st.components.v1.html(
+        f"""
+        <div style="font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 600; color: #e0e0e0;">
+            <span id="timer">00:00</span>
+        </div>
+        <script>
+            const startTime = {start_time};
+            function updateTimer() {{
+                const now = Date.now() / 1000;
+                const elapsed = Math.floor(now - startTime);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const formatted = 
+                    (minutes < 10 ? "0" : "") + minutes + ":" + 
+                    (seconds < 10 ? "0" : "") + seconds;
+                document.getElementById("timer").innerText = "⏱️ Time: " + formatted;
+            }}
+            setInterval(updateTimer, 1000);
+            updateTimer();
+        </script>
+        """,
+        height=50
+    )
 
-else:
+# Logic to determine if we should generate a question
+should_generate = False
+
+# Check if we have a pending trigger
+if st.session_state.get("trigger_next", False):
+    should_generate = True
+    st.session_state.trigger_next = False # Consume trigger
+elif st.session_state.current_question is None:
+    # Initial state or cleared state without trigger
+    if st.button("Start New Question", type="primary"):
+        should_generate = True
+
+if should_generate:
+    # Get history of topics/questions to avoid repeats
+    topic_history = [item["question"] for item in st.session_state.history]
+    
+    with st.spinner(f"Generating {difficulty} {practice_mode}..."):
+        try:
+            if "Coding" in practice_mode:
+                q = llm_manager.generate_coding_question(language, difficulty, topic_history)
+            else:
+                q = llm_manager.generate_mcq(language, difficulty, topic_history)
+            
+            st.session_state.current_question = q
+            st.session_state.question_start_time = time.time()
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to generate question: {e}")
+
+# If we have a question (and didn't just generate one, which would have triggered rerun)
+if st.session_state.current_question:
     # Display Question
     q = st.session_state.current_question
     
-    # Timer
-    elapsed_time = int(time.time() - st.session_state.question_start_time)
-    minutes, seconds = divmod(elapsed_time, 60)
-    st.markdown(f"### ⏱️ Time: {minutes:02d}:{seconds:02d}")
+    # Continuous Timer
+    if st.session_state.question_start_time:
+        timer_component(st.session_state.question_start_time)
     
     # Render UI based on Mode
     if "Coding" in practice_mode:
@@ -111,10 +148,12 @@ else:
         with col2:
             if st.button("🔄 Refresh"):
                 st.session_state.current_question = None
+                st.session_state.trigger_next = True
                 st.rerun()
         with col3:
             if st.button("⏩ Skip"):
                 st.session_state.current_question = None
+                st.session_state.trigger_next = True
                 st.rerun()
 
         if submit:
@@ -156,6 +195,7 @@ else:
                         
                     if st.button("Next Question"):
                         st.session_state.current_question = None
+                        st.session_state.trigger_next = True
                         st.rerun()
                         
                 except Exception as e:
@@ -176,10 +216,12 @@ else:
         with col2:
             if st.button("🔄 Refresh"):
                 st.session_state.current_question = None
+                st.session_state.trigger_next = True
                 st.rerun()
         with col3:
              if st.button("⏩ Skip"):
                 st.session_state.current_question = None
+                st.session_state.trigger_next = True
                 st.rerun()
         
         if submit:
@@ -206,4 +248,5 @@ else:
             
             if st.button("Next Question"):
                 st.session_state.current_question = None
+                st.session_state.trigger_next = True
                 st.rerun()
