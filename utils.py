@@ -31,7 +31,22 @@ def create_pdf_report(markdown_text):
 
     # Sanitize text to latin-1 to avoid font issues with core fonts
     def sanitize(text):
+        # Replace common problematic characters
+        text = text.replace('”', '"').replace('“', '"').replace('’', "'").replace('—', '-')
         return text.encode('latin-1', 'replace').decode('latin-1')
+
+    # Helper to split extremely long words that break PDF generation
+    def safe_text(text):
+        words = text.split()
+        safe_words = []
+        for word in words:
+            if len(word) > 45: # Break words longer than ~45 chars
+                # Insert chunks
+                chunks = [word[i:i+45] for i in range(0, len(word), 45)]
+                safe_words.append(" ".join(chunks))
+            else:
+                safe_words.append(word)
+        return " ".join(safe_words)
 
     lines = markdown_text.split('\n')
     
@@ -41,27 +56,24 @@ def create_pdf_report(markdown_text):
             pdf.ln(5)
             continue
             
-    for line in lines:
-        line = sanitize(line.strip())
-        if not line:
-            pdf.ln(5)
-            continue
-            
         if line.startswith('# '):
             pdf.set_font("Arial", 'B', 16)
-            pdf.multi_cell(0, 10, line.replace('# ', ''))
+            pdf.multi_cell(0, 10, safe_text(line.replace('# ', '')))
             pdf.set_font("Arial", size=12)
         elif line.startswith('## '):
             pdf.set_font("Arial", 'B', 14)
-            pdf.multi_cell(0, 10, line.replace('## ', ''))
+            pdf.multi_cell(0, 10, safe_text(line.replace('## ', '')))
             pdf.set_font("Arial", size=12)
         elif line.startswith('### '):
             pdf.set_font("Arial", 'B', 12)
-            pdf.multi_cell(0, 10, line.replace('### ', ''))
+            pdf.multi_cell(0, 10, safe_text(line.replace('### ', '')))
             pdf.set_font("Arial", size=12)
         else:
             line = line.replace('**', '')
-            pdf.multi_cell(0, 6, line)
+            # Use write() for better flow handling of wrapping
+            # Add a trailing space or newline to ensure separation
+            pdf.write(6, safe_text(line))
+            pdf.ln(6) # Explicit newline after paragraph
             
     return bytes(pdf.output(dest='S')) # Output as bytes
 
