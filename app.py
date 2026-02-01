@@ -30,7 +30,7 @@ with st.sidebar:
         st.error("❌ GEMINI_API_KEY is missing in .streamlit/secrets.toml")
         st.stop()
 
-    language = st.selectbox("Programming Language", ["Python", "Java", "JavaScript", "PHP", "HTML5", "CSS", "XHTML"])
+    language = st.selectbox("Programming Language", ["Python", "Java", "Java (BlueJ)", "JavaScript", "PHP", "HTML5", "CSS", "XHTML"])
     difficulty = st.selectbox("Difficulty", ["Easy", "Medium", "Hard (DSA)"])
     
     # Practice Mode Selection
@@ -103,11 +103,15 @@ else:
         # Code Input
         user_code = st.text_area("Your Solution:", value=q.starter_code, height=300)
         
-        col1, col2 = st.columns([1, 4])
+        col1, col2, col3 = st.columns([1.5, 1, 1])
         with col1:
-            submit = st.button("Submit Solution")
+            submit = st.button("Submit Solution", type="primary")
         with col2:
-            if st.button("Skip Question"):
+            if st.button("🔄 Refresh"):
+                st.session_state.current_question = None
+                st.rerun()
+        with col3:
+            if st.button("⏩ Skip"):
                 st.session_state.current_question = None
                 st.rerun()
 
@@ -164,11 +168,15 @@ else:
         
         selected_option = st.radio("Choose the correct answer:", q.options)
         
-        col1, col2 = st.columns([1, 4])
+        col1, col2, col3 = st.columns([1.5, 1, 1])
         with col1:
-            submit = st.button("Check Answer")
+            submit = st.button("Check Answer", type="primary")
         with col2:
-             if st.button("Skip Question"):
+            if st.button("🔄 Refresh"):
+                st.session_state.current_question = None
+                st.rerun()
+        with col3:
+             if st.button("⏩ Skip"):
                 st.session_state.current_question = None
                 st.rerun()
         
@@ -189,7 +197,7 @@ else:
             if is_correct:
                 st.session_state.score += 1
                 st.balloons()
-                st.success("✅ Correct! " + q.explanation)
+                st.success(f"✅ Correct! {q.explanation}")
             else:
                 st.error(f"❌ Incorrect. The correct answer was: {q.options[q.correct_option_index]}")
                 st.info(f"Explanation: {q.explanation}")
