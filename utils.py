@@ -41,30 +41,27 @@ def create_pdf_report(markdown_text):
             pdf.ln(5)
             continue
             
-        try:
-            if line.startswith('# '):
-                pdf.set_font("Arial", 'B', 16)
-                pdf.multi_cell(effective_width, 10, line.replace('# ', ''))
-                pdf.set_font("Arial", size=12)
-            elif line.startswith('## '):
-                pdf.set_font("Arial", 'B', 14)
-                pdf.multi_cell(effective_width, 10, line.replace('## ', ''))
-                pdf.set_font("Arial", size=12)
-            elif line.startswith('### '):
-                pdf.set_font("Arial", 'B', 12)
-                pdf.multi_cell(effective_width, 10, line.replace('### ', ''))
-                pdf.set_font("Arial", size=12)
-            else:
-                line = line.replace('**', '')
-                # Ensure no single word is too long (break on 90 chars roughly ~190mm)
-                 # This acts as a safety for "Not enough horizontal space" errors on single tokens
-                import textwrap
-                wrapped_lines = textwrap.wrap(line, width=90) 
-                for wrapped_line in wrapped_lines:
-                     pdf.multi_cell(effective_width, 6, wrapped_line)
-        except Exception as e:
-            print(f"Skipped line in PDF due to error: {e}")
+    for line in lines:
+        line = sanitize(line.strip())
+        if not line:
+            pdf.ln(5)
             continue
+            
+        if line.startswith('# '):
+            pdf.set_font("Arial", 'B', 16)
+            pdf.multi_cell(0, 10, line.replace('# ', ''))
+            pdf.set_font("Arial", size=12)
+        elif line.startswith('## '):
+            pdf.set_font("Arial", 'B', 14)
+            pdf.multi_cell(0, 10, line.replace('## ', ''))
+            pdf.set_font("Arial", size=12)
+        elif line.startswith('### '):
+            pdf.set_font("Arial", 'B', 12)
+            pdf.multi_cell(0, 10, line.replace('### ', ''))
+            pdf.set_font("Arial", size=12)
+        else:
+            line = line.replace('**', '')
+            pdf.multi_cell(0, 6, line)
             
     return bytes(pdf.output(dest='S')) # Output as bytes
 
