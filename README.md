@@ -3,6 +3,8 @@
 
 **Cognitio Libera** is a professional-grade Streamlit application designed to help developers master coding and computer science concepts. Powered by **Google's Gemma 3 27B IT** model, it offers a personalized, mentor-like experience for both algorithmic problem-solving and conceptual knowledge.
 
+## Try it out here:
+https://gaganpaul-cognitio-libera-app-6kkk0k.streamlit.app/
 ---
 
 ## ✨ Key Features

@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 from llm_manager import LLMManager
-from utils import init_session_state, get_base64_download_link
+from utils import init_session_state, get_base64_download_link, create_pdf_report
 
 # Page Config
 st.set_page_config(page_title="Cognitio Libera", page_icon="🚀", layout="wide")
@@ -46,8 +46,10 @@ with st.sidebar:
             try:
                 llm_manager = LLMManager(api_key)
                 with st.spinner("Generating detailed report..."):
-                    report = llm_manager.generate_report(st.session_state.history)
-                    st.markdown(get_base64_download_link(report, "progress_report.md", "📥 Download Report"), unsafe_allow_html=True)
+                    report_text = llm_manager.generate_report(st.session_state.history)
+                    # Convert to PDF
+                    pdf_bytes = create_pdf_report(report_text)
+                    st.markdown(get_base64_download_link(pdf_bytes, "progress_report.pdf", "📥 Download PDF Report", mime_type='application/pdf'), unsafe_allow_html=True)
             except Exception as e:
                     st.error(f"Error generating report: {e}")
         else:
