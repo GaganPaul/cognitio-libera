@@ -216,7 +216,7 @@ if st.session_state.current_question:
         </div>
         """, unsafe_allow_html=True)
         
-        selected_option = st.radio("Choose the correct answer:", q.options)
+        selected_option = st.radio("Choose the correct answer:", q.options, index=None)
         
         col1, col2, col3 = st.columns([1.5, 1, 1])
         with col1:
@@ -235,24 +235,30 @@ if st.session_state.current_question:
                 st.rerun()
         
         if submit:
-            user_index = q.options.index(selected_option)
-            is_correct = (user_index == q.correct_option_index)
-            st.session_state.question_answered = True
-            st.session_state.feedback = {"is_correct": is_correct, "explanation": q.explanation, "correct_option": q.options[q.correct_option_index]}
-            
-            st.session_state.history.append({
-                "question": q.title,
-                "mode": "quiz",
-                "difficulty": difficulty,
-                "language": language,
-                "user_answer": selected_option,
-                "is_correct": is_correct,
-                "explanation": q.explanation
-            })
+            if selected_option is None:
+                st.warning("⚠️ Please select an answer before checking!")
+            else:
+                user_index = q.options.index(selected_option)
+                is_correct = (user_index == q.correct_option_index)
+                st.session_state.question_answered = True
+                st.session_state.feedback = {"is_correct": is_correct, "explanation": q.explanation, "correct_option": q.options[q.correct_option_index]}
+                
+                # Check if this question was already recorded to avoid duplicates on multi-clicks (though state prevents rendering submit again usually)
+                # But here we just append. To be safe, we rely on the flow.
+                
+                st.session_state.history.append({
+                    "question": q.title,
+                    "mode": "quiz",
+                    "difficulty": difficulty,
+                    "language": language,
+                    "user_answer": selected_option,
+                    "is_correct": is_correct,
+                    "explanation": q.explanation
+                })
 
-            if is_correct:
-                st.session_state.score += 1
-                st.balloons()
+                if is_correct:
+                    st.session_state.score += 1
+                    st.balloons()
         
         # Display Quiz Feedback
         if st.session_state.get("question_answered", False) and st.session_state.feedback:
