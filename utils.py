@@ -1,5 +1,7 @@
 from fpdf import FPDF
 import io
+import streamlit as st
+import base64
 
 def init_session_state():
     if "messages" not in st.session_state:
