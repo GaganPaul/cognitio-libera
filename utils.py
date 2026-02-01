@@ -66,7 +66,7 @@ def create_pdf_report(markdown_text):
             print(f"Skipped line in PDF due to error: {e}")
             continue
             
-    return pdf.output(dest='S').encode('latin-1', errors='replace') # Output as bytes
+    return bytes(pdf.output(dest='S')) # Output as bytes
 
 def get_base64_download_link(file_data, filename, label, mime_type='text/plain'):
     if isinstance(file_data, str):
