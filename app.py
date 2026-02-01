@@ -160,8 +160,10 @@ if st.session_state.current_question:
             with st.spinner("Evaluating your solution..."):
                 try:
                     evaluation = llm_manager.evaluate_code(q, user_code, language)
+                    st.session_state.feedback = evaluation
+                    st.session_state.question_answered = True
                     
-                    # Update history
+                    # Update history immediately
                     st.session_state.history.append({
                         "question": q.title,
                         "mode": "coding",
@@ -175,31 +177,37 @@ if st.session_state.current_question:
                     if evaluation.is_correct:
                         st.session_state.score += 1
                         st.balloons()
-                        st.markdown(f"""
-                        <div class="feedback-card correct">
-                            <h3>✅ Correct!</h3>
-                            <p>{evaluation.explanation}</p>
-                            <h4>Thinking Process:</h4>
-                            <ul>{"".join([f"<li>{tip}</li>" for tip in evaluation.tips])}</ul>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div class="feedback-card incorrect">
-                            <h3>❌ Incorrect</h3>
-                            <p>{evaluation.explanation}</p>
-                            <h4>How to Improve:</h4>
-                            <ul>{"".join([f"<li>{tip}</li>" for tip in evaluation.tips])}</ul>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                    if st.button("Next Question"):
-                        st.session_state.current_question = None
-                        st.session_state.trigger_next = True
-                        st.rerun()
-                        
                 except Exception as e:
                     st.error(f"Error evaluating code: {e}")
+        
+        # Consistent Feedback Display (Persists after reload)
+        if st.session_state.get("question_answered", False) and st.session_state.feedback:
+            evaluation = st.session_state.feedback
+            if evaluation.is_correct:
+                st.markdown(f"""
+                <div class="feedback-card correct">
+                    <h3>✅ Correct!</h3>
+                    <p>{evaluation.explanation}</p>
+                    <h4>Thinking Process:</h4>
+                    <ul>{"".join([f"<li>{tip}</li>" for tip in evaluation.tips])}</ul>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="feedback-card incorrect">
+                    <h3>❌ Incorrect</h3>
+                    <p>{evaluation.explanation}</p>
+                    <h4>How to Improve:</h4>
+                    <ul>{"".join([f"<li>{tip}</li>" for tip in evaluation.tips])}</ul>
+                </div>
+                """, unsafe_allow_html=True)
+
+            if st.button("Next Question"):
+                st.session_state.current_question = None
+                st.session_state.question_answered = False
+                st.session_state.feedback = None
+                st.session_state.trigger_next = True
+                st.rerun()
 
     else: # Quiz Mode
         st.markdown(f"""
@@ -216,17 +224,21 @@ if st.session_state.current_question:
         with col2:
             if st.button("🔄 Refresh"):
                 st.session_state.current_question = None
+                st.session_state.question_answered = False
                 st.session_state.trigger_next = True
                 st.rerun()
         with col3:
              if st.button("⏩ Skip"):
                 st.session_state.current_question = None
+                st.session_state.question_answered = False
                 st.session_state.trigger_next = True
                 st.rerun()
         
         if submit:
             user_index = q.options.index(selected_option)
             is_correct = (user_index == q.correct_option_index)
+            st.session_state.question_answered = True
+            st.session_state.feedback = {"is_correct": is_correct, "explanation": q.explanation, "correct_option": q.options[q.correct_option_index]}
             
             st.session_state.history.append({
                 "question": q.title,
@@ -241,12 +253,19 @@ if st.session_state.current_question:
             if is_correct:
                 st.session_state.score += 1
                 st.balloons()
-                st.success(f"✅ Correct! {q.explanation}")
+        
+        # Display Quiz Feedback
+        if st.session_state.get("question_answered", False) and st.session_state.feedback:
+            fb = st.session_state.feedback
+            if fb["is_correct"]:
+                st.success(f"✅ Correct! {fb['explanation']}")
             else:
-                st.error(f"❌ Incorrect. The correct answer was: {q.options[q.correct_option_index]}")
-                st.info(f"Explanation: {q.explanation}")
-            
+                st.error(f"❌ Incorrect. The correct answer was: {fb['correct_option']}")
+                st.info(f"Explanation: {fb['explanation']}")
+
             if st.button("Next Question"):
                 st.session_state.current_question = None
+                st.session_state.question_answered = False
+                st.session_state.feedback = None
                 st.session_state.trigger_next = True
                 st.rerun()

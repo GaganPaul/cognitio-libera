@@ -14,6 +14,10 @@ def init_session_state():
         st.session_state.score = 0
     if "question_start_time" not in st.session_state:
         st.session_state.question_start_time = None
+    if "feedback" not in st.session_state:
+        st.session_state.feedback = None
+    if "question_answered" not in st.session_state:
+        st.session_state.question_answered = False
 
 def create_pdf_report(markdown_text):
     pdf = FPDF()
