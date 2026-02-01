@@ -22,11 +22,14 @@ def init_session_state():
 def create_pdf_report(markdown_text):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
+    pdf.set_margins(10, 10, 10)
     pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", size=12)
     
+    # Calculate effective width: 210mm (A4) - 20mm (margins) = 190mm
+    effective_width = 190
+
     # Sanitize text to latin-1 to avoid font issues with core fonts
-    # and remove characters that might break width calculations
     def sanitize(text):
         return text.encode('latin-1', 'replace').decode('latin-1')
 
@@ -38,22 +41,30 @@ def create_pdf_report(markdown_text):
             pdf.ln(5)
             continue
             
-        if line.startswith('# '):
-            pdf.set_font("Arial", 'B', 16)
-            pdf.multi_cell(0, 10, line.replace('# ', ''))
-            pdf.set_font("Arial", size=12)
-        elif line.startswith('## '):
-            pdf.set_font("Arial", 'B', 14)
-            pdf.multi_cell(0, 10, line.replace('## ', ''))
-            pdf.set_font("Arial", size=12)
-        elif line.startswith('### '):
-            pdf.set_font("Arial", 'B', 12)
-            pdf.multi_cell(0, 10, line.replace('### ', ''))
-            pdf.set_font("Arial", size=12)
-        else:
-            # Handle bolding inside lines (simple removal)
-            line = line.replace('**', '')
-            pdf.multi_cell(0, 6, line)
+        try:
+            if line.startswith('# '):
+                pdf.set_font("Arial", 'B', 16)
+                pdf.multi_cell(effective_width, 10, line.replace('# ', ''))
+                pdf.set_font("Arial", size=12)
+            elif line.startswith('## '):
+                pdf.set_font("Arial", 'B', 14)
+                pdf.multi_cell(effective_width, 10, line.replace('## ', ''))
+                pdf.set_font("Arial", size=12)
+            elif line.startswith('### '):
+                pdf.set_font("Arial", 'B', 12)
+                pdf.multi_cell(effective_width, 10, line.replace('### ', ''))
+                pdf.set_font("Arial", size=12)
+            else:
+                line = line.replace('**', '')
+                # Ensure no single word is too long (break on 90 chars roughly ~190mm)
+                 # This acts as a safety for "Not enough horizontal space" errors on single tokens
+                import textwrap
+                wrapped_lines = textwrap.wrap(line, width=90) 
+                for wrapped_line in wrapped_lines:
+                     pdf.multi_cell(effective_width, 6, wrapped_line)
+        except Exception as e:
+            print(f"Skipped line in PDF due to error: {e}")
+            continue
             
     return pdf.output(dest='S').encode('latin-1', errors='replace') # Output as bytes
 
