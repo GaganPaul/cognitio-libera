@@ -23,33 +23,36 @@ def create_pdf_report(markdown_text):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
+    pdf.set_auto_page_break(auto=True, margin=15)
     
-    # Clean up simple markdown for better PDF readability
-    # Basic cleanup: remove ** for bold, # for headers (and make them look bigger manually if needed, or just keep simple)
+    # Sanitize text to latin-1 to avoid font issues with core fonts
+    # and remove characters that might break width calculations
+    def sanitize(text):
+        return text.encode('latin-1', 'replace').decode('latin-1')
+
     lines = markdown_text.split('\n')
     
     for line in lines:
-        line = line.strip()
+        line = sanitize(line.strip())
         if not line:
             pdf.ln(5)
             continue
             
         if line.startswith('# '):
             pdf.set_font("Arial", 'B', 16)
-            pdf.cell(0, 10, line.replace('# ', ''), ln=True)
+            pdf.multi_cell(0, 10, line.replace('# ', ''))
             pdf.set_font("Arial", size=12)
         elif line.startswith('## '):
             pdf.set_font("Arial", 'B', 14)
-            pdf.cell(0, 10, line.replace('## ', ''), ln=True)
+            pdf.multi_cell(0, 10, line.replace('## ', ''))
             pdf.set_font("Arial", size=12)
         elif line.startswith('### '):
             pdf.set_font("Arial", 'B', 12)
-            pdf.cell(0, 10, line.replace('### ', ''), ln=True)
+            pdf.multi_cell(0, 10, line.replace('### ', ''))
             pdf.set_font("Arial", size=12)
         else:
             # Handle bolding inside lines (simple removal)
             line = line.replace('**', '')
-            # Multi_cell for wrapping text
             pdf.multi_cell(0, 6, line)
             
     return pdf.output(dest='S').encode('latin-1', errors='replace') # Output as bytes
