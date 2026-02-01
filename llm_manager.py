@@ -40,25 +40,46 @@ class LLMManager:
             
             print(f"DEBUG: Raw LLM Response: {text}")
 
-            # Robust JSON extraction
-            # Strategy: Locate the substring between the first '{' and the last '}'
-            start_idx = text.find("{")
-            end_idx = text.rfind("}")
+            # Robust JSON extraction using simple regex first, then raw_decode
+            import re
             
-            if start_idx != -1 and end_idx != -1:
-                json_str = text[start_idx : end_idx + 1]
+            # Find the first opening brace
+            start_idx = text.find("{")
+            if start_idx != -1:
+                # Limit text to start from the first brace
+                json_candidate = text[start_idx:]
+                try:
+                    # raw_decode stops automatically when the valid JSON object ends
+                    json_dict, end_idx = json.JSONDecoder().raw_decode(json_candidate)
+                    
+                    # Helper for Pydantic v1 vs v2 compatibility
+                    if hasattr(pydantic_model, 'model_validate'):
+                        return pydantic_model.model_validate(json_dict)
+                    else:
+                        return pydantic_model.parse_obj(json_dict)
+                except json.JSONDecodeError as e:
+                     # Fallback to AST literal eval if standard JSON fails (handles single quotes)
+                    print(f"Standard JSON parse failed, trying AST: {e}")
+            
+            # Fallback strategy: regex to find { ... }
+            # This is less preferred but can catch single-quoted dicts
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                json_str = match.group()
             else:
-                json_str = text # Hope for the best
+                json_str = text
 
-            # Try to parse
             try:
-                json_dict = json.loads(json_str)
-                # Helper for Pydantic v1 vs v2 compatibility
+                # Try loading with ast, which is permissive for Python dict syntax
+                import ast
+                json_dict = ast.literal_eval(json_str)
                 if hasattr(pydantic_model, 'model_validate'):
                     return pydantic_model.model_validate(json_dict)
                 else:
                     return pydantic_model.parse_obj(json_dict)
-            except json.JSONDecodeError as e:
+            except Exception as e:
+                print(f"AST Parsing failed: {e}")
+                raise e
                 print(f"JSON Parsing Failed: {e}")
                 # Clean up potential "Expecting property name enclosed in double quotes" if keys are single quoted
                 try:
