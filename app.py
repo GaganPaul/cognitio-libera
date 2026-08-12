@@ -32,12 +32,16 @@ with st.sidebar:
 
     language = st.selectbox("Programming Language", ["Python", "Java", "Java (BlueJ)", "JavaScript", "PHP", "HTML5", "CSS", "XHTML"])
     difficulty = st.selectbox("Difficulty", ["Easy", "Medium", "Hard (DSA)"])
+    custom_topic = st.text_input("Custom Topic/Focus (Optional)", placeholder="e.g., Recursion, Strings, OOP")
     
+    display_chat = st.checkbox("Show Chat Assistant", value=True)
+
     # Practice Mode Selection
     practice_mode = st.radio("Practice Mode", ["Coding Challenge (LeetCode)", "Quiz Mode (MCQ)"])
     if "practice_mode" not in st.session_state or st.session_state.practice_mode != practice_mode:
         st.session_state.practice_mode = practice_mode
         st.session_state.current_question = None # Reset question on mode switch
+        st.session_state.chat_history = [] # Reset chat history
         st.rerun()
 
     st.markdown("---")
@@ -107,12 +111,14 @@ if should_generate:
     with st.spinner(f"Generating {difficulty} {practice_mode}..."):
         try:
             if "Coding" in practice_mode:
-                q = llm_manager.generate_coding_question(language, difficulty, topic_history)
+            if "Coding" in practice_mode:
+                q = llm_manager.generate_coding_question(language, difficulty, topic_history, custom_topic)
             else:
-                q = llm_manager.generate_mcq(language, difficulty, topic_history)
+                q = llm_manager.generate_mcq(language, difficulty, topic_history, custom_topic)
             
             st.session_state.current_question = q
             st.session_state.question_start_time = time.time()
+            st.session_state.chat_history = [] # Reset chat history for new question
             st.rerun()
         except Exception as e:
             st.error(f"Failed to generate question: {e}")
@@ -148,11 +154,13 @@ if st.session_state.current_question:
         with col2:
             if st.button("🔄 Refresh"):
                 st.session_state.current_question = None
+                st.session_state.chat_history = []
                 st.session_state.trigger_next = True
                 st.rerun()
         with col3:
             if st.button("⏩ Skip"):
                 st.session_state.current_question = None
+                st.session_state.chat_history = []
                 st.session_state.trigger_next = True
                 st.rerun()
 
@@ -204,6 +212,7 @@ if st.session_state.current_question:
 
             if st.button("Next Question"):
                 st.session_state.current_question = None
+                st.session_state.chat_history = []
                 st.session_state.question_answered = False
                 st.session_state.feedback = None
                 st.session_state.trigger_next = True
@@ -224,12 +233,14 @@ if st.session_state.current_question:
         with col2:
             if st.button("🔄 Refresh"):
                 st.session_state.current_question = None
+                st.session_state.chat_history = []
                 st.session_state.question_answered = False
                 st.session_state.trigger_next = True
                 st.rerun()
         with col3:
              if st.button("⏩ Skip"):
                 st.session_state.current_question = None
+                st.session_state.chat_history = []
                 st.session_state.question_answered = False
                 st.session_state.trigger_next = True
                 st.rerun()
@@ -271,7 +282,49 @@ if st.session_state.current_question:
 
             if st.button("Next Question"):
                 st.session_state.current_question = None
+                st.session_state.chat_history = []
                 st.session_state.question_answered = False
                 st.session_state.feedback = None
                 st.session_state.trigger_next = True
                 st.rerun()
+
+    # Chat Interface (Available for both modes)
+    if st.session_state.get("display_chat", True): # Depends on the checkbox in sidebar if you bound it to session_state keys, but sidebar returns value directly if not key.
+                                                   # Actually, we used `display_chat = st.checkbox(...)` which returns a boolean variable `display_chat`.
+                                                   # BUT, since we are inside `app.py` script execution, `display_chat` variable from line 37 is available here.
+        if display_chat:
+            st.markdown("---")
+            st.subheader("💬 Chat with AI Mentor")
+            
+            # Display chat messages
+            for msg in st.session_state.get("chat_history", []):
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
+
+            # Chat Input
+            if prompt := st.chat_input("Ask a question about this problem..."):
+                # Add user message
+                st.session_state.chat_history.append({"role": "user", "content": prompt})
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+
+                # Get response
+                with st.spinner("Thinking..."):
+                    details = ""
+                    if "Coding" in practice_mode:
+                        details = f"Code:\\n{q.starter_code}"
+                    else:
+                        details = f"Options: {q.options}"
+
+                    question_context = {
+                        "title": q.title,
+                        "description": str(q.description) if hasattr(q, 'description') else "MCQ",
+                        "details": details
+                    }
+                    
+                    response = llm_manager.get_chat_response(question_context, st.session_state.chat_history, prompt)
+                    
+                    # Add assistant message
+                    st.session_state.chat_history.append({"role": "assistant", "content": response})
+                    with st.chat_message("assistant"):
+                        st.markdown(response)
