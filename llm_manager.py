@@ -31,65 +31,42 @@ class LLMManager:
         self.model = genai.GenerativeModel('gemini-3.6-flash')
         
     def _get_json_response(self, prompt_text: str, pydantic_model) -> dict:
+        # Ensure the model is instructed to return strict JSON
+        prompt_text += "\n\nIMPORTANT: Output strictly valid JSON. No markdown formatting. Ensure all keys and string values are enclosed in double quotes."
+
         try:
-             # Add explicit JSON instruction
-            prompt_text += "\n\nIMPORTANT: Output strictly valid JSON. No markdown formatting. Ensure all keys and string values are enclosed in double quotes."
-            
             response = self.model.generate_content(prompt_text)
             text = response.text.strip()
-            
             print(f"DEBUG: Raw LLM Response: {text}")
 
-            # Robust JSON extraction using simple regex first, then raw_decode
-            import re
-            
-            # Find the first opening brace
-            start_idx = text.find("{")
-            if start_idx != -1:
-                # Limit text to start from the first brace
-                json_candidate = text[start_idx:]
-                try:
-                    # raw_decode stops automatically when the valid JSON object ends
-                    json_dict, end_idx = json.JSONDecoder().raw_decode(json_candidate)
-                    
-                    # Helper for Pydantic v1 vs v2 compatibility
-                    if hasattr(pydantic_model, 'model_validate'):
-                        return pydantic_model.model_validate(json_dict)
-                    else:
-                        return pydantic_model.parse_obj(json_dict)
-                except json.JSONDecodeError as e:
-                     # Fallback to AST literal eval if standard JSON fails (handles single quotes)
-                    print(f"Standard JSON parse failed, trying AST: {e}")
-            
-            # Fallback strategy: regex to find { ... }
-            # This is less preferred but can catch single-quoted dicts
-            match = re.search(r"\{.*\}", text, re.DOTALL)
-            if match:
-                json_str = match.group()
-            else:
-                json_str = text
+            import re, ast
 
+            # Try direct JSON load first
             try:
-                # Try loading with ast, which is permissive for Python dict syntax
-                import ast
-                json_dict = ast.literal_eval(json_str)
-                if hasattr(pydantic_model, 'model_validate'):
-                    return pydantic_model.model_validate(json_dict)
-                else:
-                    return pydantic_model.parse_obj(json_dict)
-            except Exception as e:
-                print(f"AST Parsing failed: {e}")
-                raise e
-                print(f"JSON Parsing Failed: {e}")
-                # Clean up potential "Expecting property name enclosed in double quotes" if keys are single quoted
+                return_obj = json.loads(text)
+            except Exception:
+                # Try extracting the first JSON-like object
+                match = re.search(r"\{.*\}", text, re.DOTALL)
+                candidate = match.group() if match else text
                 try:
-                    import ast
-                    
-        except Exception as e:
-            print(f"Error parsing JSON: {e}")
-            if 'response' in locals():
-                print(f"Failed Text: {response.text}")
-            raise e
+                    return_obj = json.loads(candidate)
+                except Exception:
+                    # Final fallback to ast.literal_eval to handle single quotes / python dict literals
+                    try:
+                        return_obj = ast.literal_eval(candidate)
+                    except Exception as e:
+                        print(f"Failed to parse model response as JSON/AST: {e}")
+                        if 'response' in locals():
+                            print(f"Failed Text: {response.text}")
+                        raise
+
+            # Convert to pydantic model (supports v1 and v2)
+            if hasattr(pydantic_model, 'model_validate'):
+                return pydantic_model.model_validate(return_obj)
+            else:
+                return pydantic_model.parse_obj(return_obj)
+        except Exception:
+            raise
 
     def generate_coding_question(self, language: str, difficulty: str, topic_history: List[str] = [], custom_prompt: Optional[str] = None) -> CodingQuestion:
         # Pass the Class directly, not the parser
@@ -288,4 +265,3 @@ class LLMManager:
         except Exception as e:
             print(f"Error getting chat response: {e}")
             return "I'm having trouble connecting right now. Please try again."
-```

@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import time
 from llm_manager import LLMManager
 from utils import init_session_state, get_base64_download_link, create_pdf_report
@@ -68,7 +69,7 @@ llm_manager = LLMManager(api_key)
 # Helper for continuous timer
 def timer_component(start_time):
     # This HTML/JS will update the timer client-side without rerunning the script
-    st.components.v1.html(
+    components.html(
         f"""
         <div style="font-family: 'Inter', sans-serif; font-size: 1.5rem; font-weight: 600; color: #e0e0e0;">
             <span id="timer">00:00</span>
@@ -111,11 +112,10 @@ if should_generate:
     with st.spinner(f"Generating {difficulty} {practice_mode}..."):
         try:
             if "Coding" in practice_mode:
-            if "Coding" in practice_mode:
                 q = llm_manager.generate_coding_question(language, difficulty, topic_history, custom_topic)
             else:
                 q = llm_manager.generate_mcq(language, difficulty, topic_history, custom_topic)
-            
+
             st.session_state.current_question = q
             st.session_state.question_start_time = time.time()
             st.session_state.chat_history = [] # Reset chat history for new question
