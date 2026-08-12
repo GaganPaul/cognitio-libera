@@ -28,7 +28,7 @@ class Evaluation(BaseModel):
 class LLMManager:
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemma-3-27b-it')
+        self.model = genai.GenerativeModel('gemini-3.6-flash')
         
     def _get_json_response(self, prompt_text: str, pydantic_model) -> dict:
         try:
@@ -84,15 +84,6 @@ class LLMManager:
                 # Clean up potential "Expecting property name enclosed in double quotes" if keys are single quoted
                 try:
                     import ast
-                    # fallback to ast.literal_eval if it's a valid python dict (single quotes)
-                    json_dict = ast.literal_eval(json_str)
-                    if hasattr(pydantic_model, 'model_validate'):
-                        return pydantic_model.model_validate(json_dict)
-                    else:
-                        return pydantic_model.parse_obj(json_dict)
-                except Exception as ast_e:
-                    print(f"AST Parsing failed: {ast_e}")
-                    raise e
                     
         except Exception as e:
             print(f"Error parsing JSON: {e}")
@@ -100,19 +91,24 @@ class LLMManager:
                 print(f"Failed Text: {response.text}")
             raise e
 
-    def generate_coding_question(self, language: str, difficulty: str, topic_history: List[str] = []) -> CodingQuestion:
+    def generate_coding_question(self, language: str, difficulty: str, topic_history: List[str] = [], custom_prompt: Optional[str] = None) -> CodingQuestion:
         # Pass the Class directly, not the parser
         
         history_context = ""
         if topic_history:
             history_context = f"Previously asked topics/questions: {', '.join(topic_history[-5:])}. DO NOT repeat these. Choose a different aspect of {language}."
 
+        custom_instruction = ""
+        if custom_prompt:
+            custom_instruction = f"USER SPECIFIC REQUEST: {custom_prompt}. Focus the question on this topic/requirement."
+
         template = """
         You are an expert coding interviewer. Generate a {difficulty} coding problem in {language} (LeetCode style).
         
         {history_context}
+        {custom_instruction}
         
-        Ensure you cover a wide range of aspects of the language. If the history shows recent questions on one topic (e.g., Arrays), switch to another (e.g., Strings, Recursion, OOP, API usage).
+        Ensure you cover a wide range of aspects of the language. If the history shows recent questions on one topic (e.g., Arrays), switch to another (e.g., Strings, Recursion, OOP, API usage), unless the USER SPECIFIC REQUEST overrides this.
         
         If the difficulty is "Hard", ensure it is a complex DSA problem.
         
@@ -133,23 +129,28 @@ class LLMManager:
         
         prompt = PromptTemplate(
             template=template,
-            input_variables=["language", "difficulty", "history_context"]
+            input_variables=["language", "difficulty", "history_context", "custom_instruction"]
         )
         
-        formatted_prompt = prompt.format(language=language, difficulty=difficulty, history_context=history_context)
+        formatted_prompt = prompt.format(language=language, difficulty=difficulty, history_context=history_context, custom_instruction=custom_instruction)
         return self._get_json_response(formatted_prompt, CodingQuestion)
 
-    def generate_mcq(self, language: str, difficulty: str, topic_history: List[str] = []) -> MCQQuestion:
+    def generate_mcq(self, language: str, difficulty: str, topic_history: List[str] = [], custom_prompt: Optional[str] = None) -> MCQQuestion:
         # Pass Class directly
         
         history_context = ""
         if topic_history:
             history_context = f"Previously asked topics/questions: {', '.join(topic_history[-5:])}. DO NOT repeat these. Choose a different, unvisited aspect of {language}."
 
+        custom_instruction = ""
+        if custom_prompt:
+            custom_instruction = f"USER SPECIFIC REQUEST: {custom_prompt}. Focus the question on this topic/requirement."
+
         template = """
         You are a computer science professor. Generate a {difficulty} multiple-choice question (MCQ) about {language}.
         
         {history_context}
+        {custom_instruction}
         
         Ensure the questions become progressively diverse. Cover syntax, libraries, memory management, quirks, and best practices.
         
@@ -168,10 +169,10 @@ class LLMManager:
         
         prompt = PromptTemplate(
             template=template,
-            input_variables=["language", "difficulty", "history_context"]
+            input_variables=["language", "difficulty", "history_context", "custom_instruction"]
         )
         
-        formatted_prompt = prompt.format(language=language, difficulty=difficulty, history_context=history_context)
+        formatted_prompt = prompt.format(language=language, difficulty=difficulty, history_context=history_context, custom_instruction=custom_instruction)
         return self._get_json_response(formatted_prompt, MCQQuestion)
 
     def evaluate_code(self, question, user_code: str, language: str) -> Evaluation:
@@ -243,3 +244,48 @@ class LLMManager:
         except Exception as e:
              print(f"Error generating report: {e}")
              return "Could not generate report due to an error."
+
+    def get_chat_response(self, question_context: dict, chat_history: List[dict], user_query: str) -> str:
+        """
+        Generate a response to a user's follow-up question about the current coding problem/MCQ.
+        """
+        template = """
+        You are an expert AI Mentor assisting a student with a specific coding problem.
+        
+        Current Problem Context:
+        Title: {title}
+        Description: {description}
+        Details (Code/Options): {details}
+        
+        Chat History:
+        {chat_history}
+        
+        Student's Question: {user_query}
+        
+        Instructions:
+        - Provide a helpful, clear, and concise answer.
+        - If the user asks for the solution, give hints instead of the full answer first, unless they explicitly ask to see the solution because they give up.
+        - Explain concepts if asked.
+        - Be encouraging.
+        """
+        
+        prompt = PromptTemplate(
+            template=template,
+            input_variables=["title", "description", "details", "chat_history", "user_query"]
+        )
+        
+        formatted_prompt = prompt.format(
+            title=question_context.get("title", "Unknown"),
+            description=question_context.get("description", "N/A"),
+            details=question_context.get("details", "N/A"),
+            chat_history=chat_history,
+            user_query=user_query
+        )
+        
+        try:
+            response = self.model.generate_content(formatted_prompt)
+            return response.text
+        except Exception as e:
+            print(f"Error getting chat response: {e}")
+            return "I'm having trouble connecting right now. Please try again."
+```
