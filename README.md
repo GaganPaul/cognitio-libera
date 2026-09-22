@@ -229,7 +229,7 @@ Cognitio Libera includes a native Render Blueprint (`render.yaml`) for 1-click d
 
 ## 📜 License
 
-Created with ❤️ by **Gagan Paul**.  
+Created by **Gagan Paul**.  
 Distributed under the MIT License. See `LICENSE` for more information.
 
 *Cognitio Libera — Practice. Understand. Improve.* ✨
