@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans antialiased text-slate-800 bg-[#F9FAFD] dark:bg-[#0E1017] dark:text-slate-100 transition-colors duration-200;
+  }
+}
+
+/* Reference UI Kit Pastel Mesh Gradient */
+.bg-pastel-mesh {
+  background-color: #F8F9FE;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(233, 213, 255, 0.45) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(216, 180, 254, 0.3) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(243, 232, 255, 0.5) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(224, 231, 255, 0.35) 0px, transparent 50%);
+}
+
+.dark .bg-pastel-mesh {
+  background-color: #0c0e14;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(88, 28, 135, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(59, 7, 100, 0.12) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(17, 24, 39, 0.8) 0px, transparent 70%);
+}
+
+/* Glassmorphism Card Style */
+.glass-card {
+  @apply bg-white/90 dark:bg-[#151824]/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm transition-all duration-200;
+}
+
+.glass-card-hover {
+  @apply glass-card hover:shadow-md hover:border-purple-300 dark:hover:border-purple-800/60 transition-all duration-200;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}

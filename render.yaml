@@ -1,0 +1,66 @@
+# ============================================================
+# Render 1-Click Infrastructure Blueprint: Cognitio Libera
+# Tagline: Practice. Understand. Improve.
+# ============================================================
+
+services:
+  # ------------------------------------------------------------
+  # 1. FastAPI Web Service (Backend API)
+  # ------------------------------------------------------------
+  - type: web
+    name: cognitio-backend
+    env: python
+    region: oregon
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false # Set in Render Dashboard: Supabase connection pooler URL (port 6543)
+      - key: SUPABASE_URL
+        sync: false # e.g. https://your-project.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false # Google AI Studio Gemini API Key
+      - key: GEMINI_MODEL_NAME
+        value: gemini-3.5-flash-lite
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: cognitio-frontend
+          property: host
+
+  # ------------------------------------------------------------
+  # 2. React + Vite Static Site (Frontend SPA)
+  # ------------------------------------------------------------
+  - type: web
+    name: cognitio-frontend
+    env: static
+    region: oregon
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      # SPA rewrite rule: send all routes to index.html
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: cognitio-backend
+          property: host
+          format: https://{host}/api/v1
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
