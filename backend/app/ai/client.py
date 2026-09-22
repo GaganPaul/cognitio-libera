@@ -19,7 +19,8 @@ import os
 import json
 import logging
 from typing import Optional, Dict, Any
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 class GeminiClient:
     """
-    Singleton client managing interactions with Google Gemini models.
+    Singleton client managing interactions with Google Gemini models using the modern google.genai SDK.
     """
 
     def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
@@ -41,21 +42,15 @@ class GeminiClient:
         self.api_key = api_key or settings.GEMINI_API_KEY
         self.model_name = model_name or settings.GEMINI_MODEL_NAME
         self.is_configured = False
-        self.model = None
+        self.client: Optional[genai.Client] = None
 
         if self.api_key:
             try:
-                genai.configure(api_key=self.api_key)
-                # Try preferred model, fallback if needed
-                self.model = genai.GenerativeModel(self.model_name)
+                self.client = genai.Client(api_key=self.api_key)
                 self.is_configured = True
             except Exception as exc:
-                logger.warning(f"Failed to configure Gemini model {self.model_name}: {str(exc)}")
-                try:
-                    self.model = genai.GenerativeModel("gemini-3.5-flash-lite")
-                    self.is_configured = True
-                except Exception:
-                    self.is_configured = False
+                logger.warning(f"Failed to configure Google GenAI client: {str(exc)}")
+                self.is_configured = False
         else:
             logger.info("GEMINI_API_KEY not configured. Gemini services will use educational rule-based fallbacks.")
 
@@ -73,15 +68,22 @@ class GeminiClient:
         Security:
             API keys are never logged or echoed in responses.
         """
-        if not self.is_configured:
+        if not self.is_configured or not self.client:
             return (
                 "AI Mentor (Offline Mode): I am here to help you practice! "
                 "To enable live Gemini AI guidance, please configure your GEMINI_API_KEY in the environment."
             )
 
         try:
-            full_prompt = f"System Instruction: {system_instruction}\n\nPrompt: {prompt}" if system_instruction else prompt
-            response = self.model.generate_content(full_prompt)
+            config = None
+            if system_instruction:
+                config = types.GenerateContentConfig(system_instruction=system_instruction)
+
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=config
+            )
             return response.text.strip() if response and response.text else "No response generated."
         except Exception as exc:
             logger.error(f"Error calling Gemini API: {str(exc)}")
@@ -98,7 +100,7 @@ class GeminiClient:
         Returns:
             Optional[Dict[str, Any]]: Parsed Python dictionary or None if parsing fails.
         """
-        if not self.is_configured:
+        if not self.is_configured or not self.client:
             return None
 
         enforced_prompt = (
@@ -108,7 +110,10 @@ class GeminiClient:
         )
 
         try:
-            response = self.model.generate_content(enforced_prompt)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=enforced_prompt
+            )
             raw_text = response.text.strip() if response and response.text else ""
 
             # Remove markdown backticks if present
