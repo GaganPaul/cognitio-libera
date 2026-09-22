@@ -58,7 +58,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         return;
       }
-      const profile = await authService.getCurrentUserProfile();
+      let profile: UserProfile | null = null;
+      try {
+        profile = await authService.getCurrentUserProfile();
+      } catch (profileErr) {
+        console.warn('Could not fetch profile from backend, falling back to session user:', profileErr);
+        const sUser = session.user;
+        profile = {
+          id: sUser.id,
+          email: sUser.email || 'user@example.com',
+          username: sUser.user_metadata?.username || sUser.email?.split('@')[0] || 'User',
+          full_name: sUser.user_metadata?.full_name || sUser.email?.split('@')[0] || 'User',
+          preferred_language: 'python',
+          preferred_difficulty: 'Medium',
+          theme: 'light',
+          created_at: sUser.created_at || new Date().toISOString(),
+        };
+      }
       setUser(profile);
     } catch {
       const devToken = localStorage.getItem('cognitio_dev_token');

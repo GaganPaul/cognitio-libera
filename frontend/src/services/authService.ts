@@ -60,11 +60,25 @@ export const authService = {
     localStorage.removeItem('cognitio_dev_profile');
 
     // 2. Sync profile to backend database
-    return authService.syncUserWithBackend({
-      email: cleanEmail,
-      username: username || cleanEmail.split('@')[0],
-      full_name: fullName,
-    });
+    try {
+      return await authService.syncUserWithBackend({
+        email: cleanEmail,
+        username: username || cleanEmail.split('@')[0],
+        full_name: fullName,
+      });
+    } catch (syncErr) {
+      console.warn('Backend sync after signup failed, falling back to local session user:', syncErr);
+      return {
+        id: 'user-' + Date.now(),
+        email: cleanEmail,
+        username: username || cleanEmail.split('@')[0],
+        full_name: fullName || cleanEmail.split('@')[0],
+        preferred_language: 'python',
+        preferred_difficulty: 'Medium',
+        theme: 'light',
+        created_at: new Date().toISOString(),
+      };
+    }
   },
 
   /**
@@ -86,11 +100,25 @@ export const authService = {
       if (!error && data?.user) {
         localStorage.removeItem('cognitio_dev_token');
         localStorage.removeItem('cognitio_dev_profile');
-        return authService.syncUserWithBackend({
-          email: data.user.email || cleanEmail,
-          username: data.user.user_metadata?.username,
-          full_name: data.user.user_metadata?.full_name,
-        });
+        try {
+          return await authService.syncUserWithBackend({
+            email: data.user.email || cleanEmail,
+            username: data.user.user_metadata?.username,
+            full_name: data.user.user_metadata?.full_name,
+          });
+        } catch (syncErr) {
+          console.warn('Backend sync after login failed, falling back to session user:', syncErr);
+          return {
+            id: data.user.id,
+            email: data.user.email || cleanEmail,
+            username: data.user.user_metadata?.username || cleanEmail.split('@')[0],
+            full_name: data.user.user_metadata?.full_name || cleanEmail.split('@')[0],
+            preferred_language: 'python',
+            preferred_difficulty: 'Medium',
+            theme: 'light',
+            created_at: data.user.created_at || new Date().toISOString(),
+          };
+        }
       }
 
       // Check if developer account fallback should be triggered
