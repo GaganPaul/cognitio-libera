@@ -33,6 +33,7 @@ import {
 import { progressService } from '../services/progressService';
 import { problemService } from '../services/problemService';
 import { useAuth } from '../hooks/useAuth';
+import { formatDisplayName } from '../lib/formatters';
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
@@ -277,11 +278,11 @@ export const DashboardPage: React.FC = () => {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
-                          {leader.username.charAt(0).toUpperCase()}
+                          {formatDisplayName(leader.full_name || leader.username).charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <p className="font-bold text-sm text-slate-900 dark:text-white leading-tight">
-                            {leader.full_name || leader.username}
+                            {formatDisplayName(leader.full_name || leader.username)}
                           </p>
                           <p className="text-xs text-slate-400">
                             {leader.problems_solved} Solved • {leader.score} Pts

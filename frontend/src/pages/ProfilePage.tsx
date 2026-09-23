@@ -14,6 +14,7 @@ import { User, Code2, BookOpen, Flame, Clock, CheckCircle2, XCircle, Loader2 } f
 import { useAuth } from '../hooks/useAuth';
 import { progressService } from '../services/progressService';
 import { submissionService } from '../services/submissionService';
+import { formatUserName } from '../lib/formatters';
 
 export const ProfilePage: React.FC = () => {
   const { user } = useAuth();
@@ -28,19 +29,19 @@ export const ProfilePage: React.FC = () => {
     queryFn: () => submissionService.getSubmissions(),
   });
 
-  const displayName = user?.full_name || user?.username || 'Developer';
+  const { fullName, firstName } = formatUserName(user);
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn">
       {/* Profile Header Card */}
       <div className="glass-card p-6 md:p-8 rounded-3xl border border-purple-200/60 dark:border-purple-900/40 flex flex-col sm:flex-row items-center sm:items-start gap-6">
         <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-3xl flex items-center justify-center shadow-lg shadow-purple-500/20 ring-4 ring-purple-500/20">
-          {displayName.charAt(0).toUpperCase()}
+          {firstName.charAt(0).toUpperCase()}
         </div>
 
         <div className="flex-1 text-center sm:text-left space-y-1">
           <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-            {displayName}
+            {fullName}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {user?.email || 'student@cognitiolibera.com'}

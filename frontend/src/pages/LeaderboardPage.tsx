@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Trophy, Medal, Flame, Loader2, Sparkles } from 'lucide-react';
 import { progressService } from '../services/progressService';
 import { LeaderboardUser } from '../types';
+import { formatDisplayName } from '../lib/formatters';
 
 export const LeaderboardPage: React.FC = () => {
   const { data: leaderboard, isLoading } = useQuery({
@@ -92,11 +93,11 @@ export const LeaderboardPage: React.FC = () => {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-bold text-sm flex items-center justify-center shadow-sm">
-                            {user.username.charAt(0).toUpperCase()}
+                            {formatDisplayName(user.full_name || user.username).charAt(0).toUpperCase()}
                           </div>
                           <div>
                             <span className="font-bold text-slate-900 dark:text-white block">
-                              {user.full_name || user.username}
+                              {formatDisplayName(user.full_name || user.username)}
                             </span>
                             <span className="text-xs text-slate-400">@{user.username}</span>
                           </div>

@@ -12,6 +12,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Menu, Sparkles, CheckCircle2, Flame, Award } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { formatUserName } from '../../lib/formatters';
 
 interface TopBarProps {
   onMobileMenuToggle?: () => void;
@@ -29,7 +30,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
-  const displayName = user?.full_name || user?.username || 'Student';
+  const { firstName, fullName, greeting: defaultGreeting } = formatUserName(user);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
@@ -59,7 +60,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            {greeting || `Welcome ${displayName}!`}
+            {greeting || defaultGreeting}
           </h1>
           <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400">
             {subtitle || 'Here is your Profile Dashboard'}
@@ -134,9 +135,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         <NavLink
           to="/profile"
           className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-800 hover:opacity-90 transition-opacity"
+          title={fullName}
         >
           <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-purple-500/20">
-            {displayName.charAt(0).toUpperCase()}
+            {firstName.charAt(0).toUpperCase()}
           </div>
         </NavLink>
       </div>

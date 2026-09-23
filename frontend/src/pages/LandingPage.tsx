@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabaseClient';
+import { formatUserName } from '../lib/formatters';
 
 export interface LandingPageProps {
   defaultAuthMode?: 'login' | 'signup';
@@ -300,7 +301,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ defaultAuthMode }) => 
                   className="absolute -bottom-4 right-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 py-2 rounded-full shadow-xl z-20 flex items-center gap-2 hover:scale-105 transition-transform text-xs font-bold cursor-pointer"
                 >
                   <UserCheck className="w-4 h-4 text-emerald-300" />
-                  <span>Welcome back, {user.username || 'Student'}!</span>
+                  <span>Welcome back, {formatUserName(user).firstName}!</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               )}
