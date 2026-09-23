@@ -27,6 +27,15 @@ import {
   HelpCircle,
   RotateCcw,
   BookOpen,
+  Play,
+  Pause,
+  Flag,
+  X,
+  AlertCircle,
+  AlertTriangle,
+  Trophy,
+  Award,
+  Timer,
 } from 'lucide-react';
 import { quizService } from '../services/quizService';
 import { QuizAttemptResponse } from '../types';
@@ -67,9 +76,14 @@ export const QuizWorkspacePage: React.FC = () => {
   const [isCompleted, setIsCompleted] = useState(false);
   const [isGeneratingFresh, setIsGeneratingFresh] = useState(false);
 
-  // Active 60-minute countdown timer
+  // Active 60-minute countdown timer & session metrics
   const [timeLeft, setTimeLeft] = useState(3600);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTimerActive, setIsTimerActive] = useState(true);
+
+  // Modals
+  const [showEndTestModal, setShowEndTestModal] = useState(false);
+  const [showTimeUpModal, setShowTimeUpModal] = useState(false);
 
   React.useEffect(() => {
     // Reset answers when category changes
@@ -77,14 +91,18 @@ export const QuizWorkspacePage: React.FC = () => {
     setGradedResults({});
     setIsCompleted(false);
     setTimeLeft(3600);
+    setElapsedSeconds(0);
   }, [category]);
 
   React.useEffect(() => {
     if (!isTimerActive || isCompleted) return;
     const interval = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
+          setIsTimerActive(false);
+          setShowTimeUpModal(true);
           return 0;
         }
         return prev - 1;
@@ -98,6 +116,34 @@ export const QuizWorkspacePage: React.FC = () => {
     const mins = Math.floor((totalSec % 3600) / 60);
     const secs = totalSec % 60;
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatElapsedDuration = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    if (mins === 0) return `${secs}s`;
+    return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+  };
+
+  const handleToggleTimer = () => {
+    setIsTimerActive((prev) => !prev);
+  };
+
+  const handleResetTimer = () => {
+    setTimeLeft(3600);
+    setElapsedSeconds(0);
+    setIsTimerActive(true);
+  };
+
+  const handleOpenEndTest = () => {
+    setIsTimerActive(false);
+    setShowEndTestModal(true);
+  };
+
+  const handleResumeTest = () => {
+    setShowEndTestModal(false);
+    setShowTimeUpModal(false);
+    setIsTimerActive(true);
   };
 
   // Select an option
@@ -273,17 +319,77 @@ export const QuizWorkspacePage: React.FC = () => {
             <span>Generate Fresh</span>
           </button>
 
-          {/* Quiz Timer matching Image 2 top-right */}
-          <button
-            onClick={() => setIsTimerActive(!isTimerActive)}
-            title={isTimerActive ? 'Click to pause timer' : 'Click to resume timer'}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono font-bold text-sm tracking-wider border border-slate-200 dark:border-slate-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
-          >
-            <Clock className={`w-4 h-4 ${timeLeft < 300 ? 'text-rose-500 animate-pulse' : 'text-purple-600 dark:text-purple-400'}`} />
-            <span className={timeLeft < 300 ? 'text-rose-600 dark:text-rose-400 font-extrabold' : ''}>
-              {formatCountdown(timeLeft)}
-            </span>
-          </button>
+          {/* Quiz Timer with interactive controls & End Test Button */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border transition-all ${
+                isTimerActive
+                  ? timeLeft < 300
+                    ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                  : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200'
+              }`}
+            >
+              <Clock
+                className={`w-4 h-4 ${
+                  isTimerActive
+                    ? timeLeft < 300
+                      ? 'text-rose-600 animate-bounce'
+                      : 'text-purple-600 dark:text-purple-400 animate-pulse'
+                    : 'text-amber-500'
+                }`}
+              />
+
+              <span className={`font-mono font-bold text-sm tracking-wider ${timeLeft < 300 ? 'text-rose-600 dark:text-rose-400 font-extrabold' : ''}`}>
+                {formatCountdown(timeLeft)}
+              </span>
+
+              {!isTimerActive && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 uppercase tracking-wider">
+                  Paused
+                </span>
+              )}
+
+              <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-0.5" />
+
+              {/* Play / Pause Toggle Button */}
+              <button
+                type="button"
+                onClick={handleToggleTimer}
+                title={isTimerActive ? 'Pause timer' : 'Resume timer'}
+                className="p-1 rounded-md text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors"
+                aria-label={isTimerActive ? 'Pause timer' : 'Resume timer'}
+              >
+                {isTimerActive ? (
+                  <Pause className="w-3.5 h-3.5 fill-current" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                )}
+              </button>
+
+              {/* Reset Timer Button */}
+              <button
+                type="button"
+                onClick={handleResetTimer}
+                title="Reset timer"
+                className="p-1 rounded-md text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-200/70 dark:hover:bg-slate-700 transition-colors"
+                aria-label="Reset timer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* End Test Button */}
+            <button
+              type="button"
+              onClick={handleOpenEndTest}
+              className="flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full border border-rose-300 dark:border-rose-800/80 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+              title="End assessment and conclude session"
+            >
+              <Flag className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>End Test</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -532,6 +638,147 @@ export const QuizWorkspacePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* End Quiz Assessment Modal */}
+      {showEndTestModal && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleResumeTest();
+          }}
+        >
+          <div className="relative w-full max-w-lg bg-white dark:bg-[#141622] rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-6 text-slate-800 dark:text-slate-100">
+            <button
+              onClick={handleResumeTest}
+              className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 flex-shrink-0">
+                <Flag className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white leading-tight">
+                  End Quiz Assessment?
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Are you ready to submit your answers and conclude this quiz session?
+                </p>
+              </div>
+            </div>
+
+            {/* Assessment Progress Details */}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                <span className="font-semibold text-slate-500">Assessment:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{getCategoryDisplayTitle(category)}</span>
+              </div>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
+                <span className="font-semibold text-slate-500">Time Spent:</span>
+                <span className="font-mono font-bold text-purple-600 dark:text-purple-400">
+                  {formatElapsedDuration(elapsedSeconds)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-500">Answered Questions:</span>
+                <span className={`font-bold ${
+                  answeredCount === (questions?.length || 0)
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-600 dark:text-amber-400'
+                }`}>
+                  {answeredCount} of {questions?.length || 0} Questions
+                </span>
+              </div>
+            </div>
+
+            {questions && answeredCount < questions.length && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  You still have <strong>{questions.length - answeredCount} unanswered</strong> questions. Are you sure you want to finish now?
+                </span>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleResumeTest}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-full border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Resume Assessment
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEndTestModal(false);
+                    navigate('/practice');
+                  }}
+                  className="px-4 py-2.5 rounded-full text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                >
+                  Exit Without Grading
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEndTestModal(false);
+                    handleSubmitQuiz();
+                  }}
+                  disabled={answeredCount === 0}
+                  className="px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold shadow-md shadow-purple-500/25 hover:scale-[1.02] transition-all disabled:opacity-50"
+                >
+                  Submit & End Test
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Time Up Modal */}
+      {showTimeUpModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-[#141622] rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5 text-center text-slate-800 dark:text-slate-100">
+            <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 flex items-center justify-center text-rose-600 dark:text-rose-400 mx-auto">
+              <Timer className="w-7 h-7 animate-bounce" />
+            </div>
+
+            <div>
+              <h3 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+                Time is Up!
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                The 60-minute duration for this conceptual assessment has expired. Submit your answers to view your score and detailed explanations.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300">
+              Answered: <strong className="text-purple-600 dark:text-purple-400">{answeredCount} of {questions?.length || 0} Questions</strong>
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTimeUpModal(false);
+                  handleSubmitQuiz();
+                }}
+                disabled={answeredCount === 0}
+                className="w-full py-3 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-xs shadow-md shadow-purple-500/25 hover:scale-[1.02] transition-all disabled:opacity-50"
+              >
+                Submit Assessment Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
