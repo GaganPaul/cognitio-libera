@@ -461,6 +461,23 @@ INSERT INTO public.user_preferences (id, user_id, preferred_language, theme, edi
 VALUES ('demo_pref_01', 'demo_user_01', 'python', 'light', 14, 4)
 ON CONFLICT (user_id) DO NOTHING;
 
+-- user profile view query
+SELECT
+    id,
+    email,
+    username,
+    full_name,
+    avatar_url,
+    role,
+    total_points,
+    current_streak,
+    longest_streak,
+    last_active_at,
+    created_at,
+    updated_at
+FROM public.profiles
+ORDER BY created_at DESC; 
+
 -- ==============================================================================
 -- END OF SUPABASE SCHEMA & CURRICULUM MIGRATION
 -- ==============================================================================
